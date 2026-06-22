@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Briefcase, ClipboardList, BookmarkCheck, TrendingUp, ArrowRight, Clock } from 'lucide-react';
+import { Briefcase, ClipboardList, BookmarkCheck, TrendingUp, ArrowRight, Clock, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -14,6 +14,36 @@ interface Stats {
     applied_at: string;
     job: { title: string; company: string } | null;
   }>;
+}
+
+function CoachWelcomeBanner() {
+  const [message, setMessage] = useState<string | null>(() =>
+    localStorage.getItem('drafted_coach_welcome')
+  );
+
+  if (!message) return null;
+
+  const dismiss = () => {
+    localStorage.removeItem('drafted_coach_welcome');
+    setMessage(null);
+  };
+
+  return (
+    <div className="mb-6 bg-white border border-teal-200 rounded-xl shadow-sm p-5 relative">
+      <button
+        onClick={dismiss}
+        aria-label="Dismiss coach message"
+        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        <X className="w-4 h-4" />
+      </button>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-2 h-2 rounded-full bg-teal-500" />
+        <span className="text-xs font-semibold text-teal-600 uppercase tracking-wider">Your Coach</span>
+      </div>
+      <p className="text-gray-700 text-sm leading-relaxed pr-6">{message}</p>
+    </div>
+  );
 }
 
 export function Dashboard() {
@@ -73,6 +103,8 @@ export function Dashboard() {
 
   return (
     <div>
+      <CoachWelcomeBanner />
+
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">
           Welcome back{user?.user_metadata?.full_name ? `, ${user.user_metadata.full_name}` : ''}
