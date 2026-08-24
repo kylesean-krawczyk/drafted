@@ -397,28 +397,42 @@ Keep it conversational, warm, and direct. No bullet points. Use plain language. 
   }
   setSaving(true);
 
-  const [profileResult, orgResult] = await Promise.all([
-    supabase.from('profiles').upsert({
+  try {
+    console.log('[handleComplete] starting profiles upsert...');
+    const profilePromise = supabase.from('profiles').upsert({
       id: user.id,
       background_story: data.backgroundStory,
       resume_text: data.resumeText,
       onboarding_complete: true,
-    }),
-    supabase.from('target_orgs').insert({
+    }).then((res) => {
+      console.log('[handleComplete] profiles upsert resolved:', res);
+      return res;
+    });
+
+    console.log('[handleComplete] starting target_orgs insert...');
+    const orgPromise = supabase.from('target_orgs').insert({
       user_id: user.id,
       name: data.orgName,
       career_page_url: data.orgUrl,
       reason: data.orgReason,
-    }),
-  ]);
+    }).then((res) => {
+      console.log('[handleComplete] target_orgs insert resolved:', res);
+      return res;
+    });
 
-  if (profileResult.error) console.error('[handleComplete] profiles upsert error:', profileResult.error);
-  if (orgResult.error) console.error('[handleComplete] target_orgs insert error:', orgResult.error);
+    const [profileResult, orgResult] = await Promise.all([profilePromise, orgPromise]);
 
-  console.log('[handleComplete] done, navigating to dashboard');
-  setOnboardingComplete(true);
-  setSaving(false);
-  navigate('/dashboard');
+    if (profileResult.error) console.error('[handleComplete] profiles error:', profileResult.error);
+    if (orgResult.error) console.error('[handleComplete] target_orgs error:', orgResult.error);
+
+    console.log('[handleComplete] done, navigating');
+    setOnboardingComplete(true);
+    setSaving(false);
+    navigate('/dashboard');
+  } catch (err) {
+    console.error('[handleComplete] CAUGHT EXCEPTION:', err);
+    setSaving(false);
+  }
 };
 
   return (
