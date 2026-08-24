@@ -425,7 +425,6 @@ const handleComplete = async () => {
     setSaving(false);
   }
 };
-
     const [profileResult, orgResult] = await Promise.all([profilePromise, orgPromise]);
 
     if (profileResult.error) console.error('[handleComplete] profiles error:', profileResult.error);
