@@ -389,7 +389,7 @@ Keep it conversational, warm, and direct. No bullet points. Use plain language. 
     }
   };
 
- const handleComplete = async () => {
+const handleComplete = async () => {
   console.log('[handleComplete] clicked. user:', user);
   if (!user) {
     console.error('[handleComplete] ABORTED — no user in auth context');
@@ -398,27 +398,33 @@ Keep it conversational, warm, and direct. No bullet points. Use plain language. 
   setSaving(true);
 
   try {
-    console.log('[handleComplete] starting profiles upsert...');
-    const profilePromise = supabase.from('profiles').upsert({
+    console.log('[handleComplete] upserting profile...');
+    const profileResult = await supabase.from('profiles').upsert({
       id: user.id,
       background_story: data.backgroundStory,
       resume_text: data.resumeText,
       onboarding_complete: true,
-    }).then((res) => {
-      console.log('[handleComplete] profiles upsert resolved:', res);
-      return res;
     });
+    if (profileResult.error) console.error('[handleComplete] profiles error:', profileResult.error);
 
-    console.log('[handleComplete] starting target_orgs insert...');
-    const orgPromise = supabase.from('target_orgs').insert({
+    console.log('[handleComplete] inserting target org...');
+    const orgResult = await supabase.from('target_orgs').insert({
       user_id: user.id,
       name: data.orgName,
       career_page_url: data.orgUrl,
       reason: data.orgReason,
-    }).then((res) => {
-      console.log('[handleComplete] target_orgs insert resolved:', res);
-      return res;
     });
+    if (orgResult.error) console.error('[handleComplete] target_orgs error:', orgResult.error);
+
+    console.log('[handleComplete] done, navigating');
+    setOnboardingComplete(true);
+    setSaving(false);
+    navigate('/dashboard');
+  } catch (err) {
+    console.error('[handleComplete] CAUGHT EXCEPTION:', err);
+    setSaving(false);
+  }
+};
 
     const [profileResult, orgResult] = await Promise.all([profilePromise, orgPromise]);
 
