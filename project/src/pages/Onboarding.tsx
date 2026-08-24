@@ -389,29 +389,37 @@ Keep it conversational, warm, and direct. No bullet points. Use plain language. 
     }
   };
 
-  const handleComplete = async () => {
-    if (!user) return;
-    setSaving(true);
+ const handleComplete = async () => {
+  console.log('[handleComplete] clicked. user:', user);
+  if (!user) {
+    console.error('[handleComplete] ABORTED — no user in auth context');
+    return;
+  }
+  setSaving(true);
 
-    await Promise.all([
-      supabase.from('profiles').upsert({
-        id: user.id,
-        background_story: data.backgroundStory,
-        resume_text: data.resumeText,
-        onboarding_complete: true,
-      }),
-      supabase.from('target_orgs').insert({
-        user_id: user.id,
-        name: data.orgName,
-        career_page_url: data.orgUrl,
-        reason: data.orgReason,
-      }),
-    ]);
+  const [profileResult, orgResult] = await Promise.all([
+    supabase.from('profiles').upsert({
+      id: user.id,
+      background_story: data.backgroundStory,
+      resume_text: data.resumeText,
+      onboarding_complete: true,
+    }),
+    supabase.from('target_orgs').insert({
+      user_id: user.id,
+      name: data.orgName,
+      career_page_url: data.orgUrl,
+      reason: data.orgReason,
+    }),
+  ]);
 
-    setOnboardingComplete(true);
-    setSaving(false);
-    navigate('/dashboard');
-  };
+  if (profileResult.error) console.error('[handleComplete] profiles upsert error:', profileResult.error);
+  if (orgResult.error) console.error('[handleComplete] target_orgs insert error:', orgResult.error);
+
+  console.log('[handleComplete] done, navigating to dashboard');
+  setOnboardingComplete(true);
+  setSaving(false);
+  navigate('/dashboard');
+};
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
