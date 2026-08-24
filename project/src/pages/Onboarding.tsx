@@ -425,20 +425,6 @@ const handleComplete = async () => {
     setSaving(false);
   }
 };
-    const [profileResult, orgResult] = await Promise.all([profilePromise, orgPromise]);
-
-    if (profileResult.error) console.error('[handleComplete] profiles error:', profileResult.error);
-    if (orgResult.error) console.error('[handleComplete] target_orgs error:', orgResult.error);
-
-    console.log('[handleComplete] done, navigating');
-    setOnboardingComplete(true);
-    setSaving(false);
-    navigate('/dashboard');
-  } catch (err) {
-    console.error('[handleComplete] CAUGHT EXCEPTION:', err);
-    setSaving(false);
-  }
-};
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
