@@ -28,3 +28,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     lock: inMemoryLock,
   },
 });
+if (import.meta.env.DEV || true) {
+  (window as unknown as { supabase: typeof supabase }).supabase = supabase;
+}
