@@ -1,34 +1,64 @@
-import { createClient, type LockFunc } from '@supabase/supabase-js';
+const handleComplete = async () => {
+  console.log('[handleComplete] clicked. user:', user);
+  if (!user) {
+    console.error('[handleComplete] ABORTED — no user in auth context');
+    return;
+  }
+  setSaving(true);
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Workaround for a known supabase-js bug (github.com/supabase/supabase-js
-// issues #1594, #2013, #2111): the default lock, built on the browser's
-// Web Locks API, can get orphaned and hang every future auth-dependent
-// call forever. This replaces it with a simple in-memory queue that
-// can't get stuck across reloads.
-let lockQueue: Promise<unknown> = Promise.resolve();
-const inMemoryLock: LockFunc = async (_name, _acquireTimeout, fn) => {
-  const previous = lockQueue;
-  let release: () => void;
-  lockQueue = new Promise((resolve) => {
-    release = resolve;
-  });
   try {
-    await previous;
-    return await fn();
-  } finally {
-    release!();
+    const stored = localStorage.getItem('sb-fugkizfjmdmcjonegswv-auth-token');
+    const session = stored ? JSON.parse(stored) : null;
+    const accessToken = session?.access_token;
+    if (!accessToken) throw new Error('No access token found in localStorage');
+
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+    console.log('[handleComplete] upserting profile via raw fetch...');
+    const profileRes = await fetch(`${baseUrl}/rest/v1/profiles?on_conflict=id`, {
+      method: 'POST',
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=representation',
+      },
+      body: JSON.stringify({
+        id: user.id,
+        background_story: data.backgroundStory,
+        resume_text: data.resumeText,
+        onboarding_complete: true,
+      }),
+    });
+    console.log('[handleComplete] profile response status:', profileRes.status);
+    if (!profileRes.ok) console.error('[handleComplete] profile error body:', await profileRes.text());
+
+    console.log('[handleComplete] inserting target org via raw fetch...');
+    const orgRes = await fetch(`${baseUrl}/rest/v1/target_orgs`, {
+      method: 'POST',
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({
+        user_id: user.id,
+        name: data.orgName,
+        career_page_url: data.orgUrl,
+        reason: data.orgReason,
+      }),
+    });
+    console.log('[handleComplete] org response status:', orgRes.status);
+    if (!orgRes.ok) console.error('[handleComplete] org error body:', await orgRes.text());
+
+    console.log('[handleComplete] done, navigating');
+    setOnboardingComplete(true);
+    setSaving(false);
+    navigate('/dashboard');
+  } catch (err) {
+    console.error('[handleComplete] CAUGHT EXCEPTION:', err);
+    setSaving(false);
   }
 };
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    lock: inMemoryLock,
-  },
-});
-(window as any).supabase = supabase;
-if (import.meta.env.DEV || true) {
-  (window as unknown as { supabase: typeof supabase }).supabase = supabase;
-}
