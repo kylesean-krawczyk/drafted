@@ -56,28 +56,61 @@ export function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchStats() {
-      if (!user) return;
+ useEffect(() => {
+  async function fetchStats() {
+    if (!user) return;
 
-      const [appsResult, interviewResult, savedResult, recentResult] = await Promise.all([
-        supabase.from('applications').select('id', { count: 'exact' }).eq('user_id', user.id),
-        supabase.from('applications').select('id', { count: 'exact' }).eq('user_id', user.id).eq('status', 'interviewing'),
-        supabase.from('saved_jobs').select('id', { count: 'exact' }).eq('user_id', user.id),
-        supabase.from('applications').select('id, status, applied_at, job:jobs(title, company)').eq('user_id', user.id).order('applied_at', { ascending: false }).limit(5),
+    try {
+      const stored = localStorage.getItem('sb-fugkizfjmdmcjonegswv-auth-token');
+      const session = stored ? JSON.parse(stored) : null;
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        console.error('[Dashboard] No access token found');
+        setLoading(false);
+        return;
+      }
+
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const headers = {
+        apikey: anonKey,
+        Authorization: `Bearer ${accessToken}`,
+      };
+
+      console.log('[Dashboard] fetching stats via raw fetch...');
+
+      const [appsRes, interviewRes, savedRes, recentRes] = await Promise.all([
+        fetch(`${baseUrl}/rest/v1/applications?select=id&user_id=eq.${user.id}`, { headers }),
+        fetch(`${baseUrl}/rest/v1/applications?select=id&user_id=eq.${user.id}&status=eq.interviewing`, { headers }),
+        fetch(`${baseUrl}/rest/v1/saved_jobs?select=id&user_id=eq.${user.id}`, { headers }),
+        fetch(`${baseUrl}/rest/v1/applications?select=id,status,applied_at,job:jobs(title,company)&user_id=eq.${user.id}&order=applied_at.desc&limit=5`, { headers }),
+      ]);
+
+      console.log('[Dashboard] response statuses:', appsRes.status, interviewRes.status, savedRes.status, recentRes.status);
+
+      const [appsData, interviewData, savedData, recentData] = await Promise.all([
+        appsRes.json(),
+        interviewRes.json(),
+        savedRes.json(),
+        recentRes.json(),
       ]);
 
       setStats({
-        totalApplications: appsResult.count || 0,
-        interviewing: interviewResult.count || 0,
-        savedJobs: savedResult.count || 0,
-        recentApplications: (recentResult.data || []) as Stats['recentApplications'],
+        totalApplications: Array.isArray(appsData) ? appsData.length : 0,
+        interviewing: Array.isArray(interviewData) ? interviewData.length : 0,
+        savedJobs: Array.isArray(savedData) ? savedData.length : 0,
+        recentApplications: (Array.isArray(recentData) ? recentData : []) as Stats['recentApplications'],
       });
+      console.log('[Dashboard] stats loaded successfully');
+    } catch (err) {
+      console.error('[Dashboard] CAUGHT EXCEPTION:', err);
+    } finally {
       setLoading(false);
     }
+  }
 
-    fetchStats();
-  }, [user]);
+  fetchStats();
+}, [user]);
 
   const statCards = [
     { label: 'Applications', value: stats.totalApplications, icon: ClipboardList, color: 'bg-teal-50 text-teal-600' },
