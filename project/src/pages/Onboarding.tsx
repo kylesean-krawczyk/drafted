@@ -356,7 +356,7 @@ Keep it conversational, warm, and direct. No bullet points. Use plain language. 
           'anthropic-dangerous-direct-browser-access': 'true',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-5',
           max_tokens: 400,
           messages: [{ role: 'user', content: coachPrompt }],
         }),
